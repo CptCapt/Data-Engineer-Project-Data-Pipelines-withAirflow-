@@ -28,11 +28,13 @@ class SqlQueries:
     song_table_insert = ("""
         SELECT distinct song_id, title, artist_id, year, duration
         FROM staging_songs
+        WHERE song_id IS NOT NULL
     """)
 
     artist_table_insert = ("""
         SELECT distinct artist_id, artist_name, artist_location, artist_latitude, artist_longitude
         FROM staging_songs
+        WHERE artist_id IS NOT NULL
     """)
 
     time_table_insert = ("""
