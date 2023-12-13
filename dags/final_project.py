@@ -23,19 +23,12 @@ default_args = {
 @dag(
     default_args=default_args,
     description='Load and transform data in Redshift with Airflow',
-    schedule_interval='@hourly',
-    template_searchpath = ['/home/workspace/airflow']
+    schedule_interval='@hourly'
 )
 
 def final_project():
 
     start_operator = DummyOperator(task_id='Begin_execution')
-
-    #create_tables = PostgresOperator(
-    #task_id="create_tables",
-    #postgres_conn_id="redshift",
-    #sql="create_tables.sql"
-    #)
 
     stage_events_to_redshift = StageToRedshiftOperator(
         task_id='Stage_events',
