@@ -13,9 +13,11 @@ The source data resides in S3 and needs to be processed in Sparkify's data wareh
 ## Problem Discription
 
 In this project I fulfilled the complete ETL process by creating a data pipeline using Apache Airflow. Beginning with the Sparkify's raw datasets which are stored in S3 bucket, I formulated then custom operators for inserting automatically the raw data into redshift tables. These table follow a Star Schema.
-Finally I ran data quality chacks, which are basically simple SQL queries for each table.
+Finally I ran data quality checks, which are basically simple SQL queries for each table.
 
-The whole process can be conducted and observed via Apache Airflow
+The whole process can be conducted and observed via Apache Airflow and has this structure:
+
+![alt text](assets/final_project_dag_graph2.png)
 
 The intent for tis for Data Scientists to use the solution to train machine learning models or for Data Analysts to answer dedicated question about the customers behaviour. 
 
@@ -32,71 +34,34 @@ The provided datasets for customers and music sessions are stored in JSON format
 * Create an IAM User in AWS with the necessary rights.
 * Configure a Redshift Serverless workspace in AWS, which is open for external access.
 * By using the Query Editor from Redshift Serverless it is mandatory to run the sql queries from `create_tables.sql` to prior create the star schema tables.
+  <details>
+  <summary>
+  Tables are created as follows:
+  </summary>
+    
+  ![alt text](assets/create_tables.png)
 
+  </details>
 ---
-## Structure
+## Repository Structure
 
-<details>
-<summary>
-/dags
-</summary>
+### /dags
 
-This folder contains `final_project.py`, which describes the code for the complete DAG. It also descibes different tasks and orders them in after appropriate dependencies. 
+This folder contains `final_project.py`, which describes the code for the complete DAG. It also descibes different tasks and orders them after appropriate dependencies. 
 
-**1- Customer Landing Table:**
+### /plugins/helpers
 
-![alt text](AthenaQueries/Screenshots/customer_landing.png)
+This folder contains the `sql_queries.py` that describes the sql statement for inserting the data from staging tables to fact and dimension tables. This code is used by custom operators.
 
-**2- Accelerometer Landing Table:**
+### /plugins/operators
 
-![alt text](AthenaQueries/Screenshots/accelerometer_landing.png)
-
-**3- Step Trainer Landing Table:**
-
-![alt text](AthenaQueries/Screenshots/step_trainer_landing.png)
-
-</details>
-
-<details>
-<summary>
-Trusted Zone
-</summary>
-
-In the Trusted Zone, I created AWS Glue jobs to transform the raw data from the landing zones to the corresponding trusted zones. In conclusion, it only contains customer records from people who agreed to share their data.
-
-**Glue job scripts**
-
-[1. customer_landing_to_trusted.py](GlueETL/Customer/customer_landing_to_trusted.py) - This script transfers customer data from the 'landing' to 'trusted' zones. It filters for customers who have agreed to share data with researchers.
-
-[2. accelerometer_landing_to_trusted.py](GlueETL/accelerometer/accelerometer_landing_to_trusted.py) - This script transfers accelerometer data from the 'landing' to 'trusted' zones. Using a join on customer_trusted and accelerometer_landing, It filters for Accelerometer readings from customers who have agreed to share data with researchers.
-
-[3. step_trainer_landing_to_trusted.py](GlueETL/StepTrainer/step_trainer_landing_to_trusted.py) - This script transfers Step Trainer data from the 'landing' to 'trusted' zones. Using a join on customer_curated and step_trainer_landing, It filters for customers who have accelerometer data and have agreed to share their data for research with Step Trainer readings.
-
-The customer_trusted table was queried in Athena.
-The following images show relevant Athena Queries to verify the correct table creation and the correct amount of data points.
-
-![alt text](AthenaQueries/Screenshots/customer_trusted.png)
-
-Verification, that customer_trusted only shows customers, who agreed using their data (therefore "sharewithresearchasofdate" column must be empty).
-![alt text](AthenaQueries/Screenshots/customer_trusted_verified.png)
-
-</details>
-
-<details>
-<summary>
-Curated Zone
-</summary>
-
-In the Curated Zone I created AWS Glue jobs to make further transformations, to meet the specific needs of a particular analysis. E.g. the tables were reduced to only show necessary data.
-
-**Glue job scripts**
-
-[customer_trusted_to_curated.py](GlueETL/Customer/customer_trusted_to_curated.py) - This script transfers customer data from the 'trusted' to 'curated' zones. Using a join on customer_trusted and accelerometer_landing, It filters for customers with Accelerometer readings and have agreed to share data with researchers.
-
-[create_machine_learning_curated.py](GlueETL/StepTrainer/create_machine_learning_curated.py): This script is used to build aggregated table that has each of the Step Trainer Readings, and the associated accelerometer reading data for the same timestamp, but only for customers who have agreed to share their data.
-
-The following images show relevant Athena Queries to verify the correct table creation and the correct amount of data points.
-
-![alt text](AthenaQueries/Screenshots/machine_learning_curated.png)
+This folder contains all custom operators, whixch are in fact the following: 
+  * `stage_redshift.py` contains `StageToRedshiftOperator`, which copies JSON data from S3 bucket to staging tables in the Redshift workspace.
+  * `load_dimension.py` contains `LoadDimensionOperator`, which is used for loading data from staging tables to dimension tables.
+  * `load_fact.py` contains LoadFactOperator, which is used for loading data from staging tables to fact table.
+  * `data_quality.py` contains `DataQualityOperator`, which runs a data quality check by passing a simple SQL query counting the amount of data in each table.
+    The following picture is the Airflow output of this check.
+  
+    ![alt text](assets/quality_check.png)
 
 </details>
