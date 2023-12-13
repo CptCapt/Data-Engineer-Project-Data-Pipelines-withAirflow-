@@ -1,69 +1,102 @@
-# Data Pipelines with Airflow
+# Project: Sparkify - Data Pipelines with Airflow
 
-Welcome to the Data Pipelines with Airflow project! This endeavor will provide you with a solid understanding of Apache Airflow's core concepts. Your task involves creating custom operators to execute essential functions like staging data, populating a data warehouse, and validating data through the pipeline.
+---
+## Project Overview
 
-To begin, we've equipped you with a project template that streamlines imports and includes four unimplemented operators. These operators need your attention to turn them into functional components of a data pipeline. The template also outlines tasks that must be interconnected for a coherent and logical data flow.
+A music streaming company, Sparkify, has decided that it is time to introduce more automation and monitoring to their data warehouse ETL pipelines and come to the conclusion that the best tool to achieve this is Apache Airflow.
 
-A helper class containing all necessary SQL transformations is at your disposal. While you won't have to write the ETL processes, your responsibility lies in executing them using your custom operators.
+They have decided to bring you into the project and expect you to create high grade data pipelines that are dynamic and built from reusable tasks, can be monitored, and allow easy backfills. They have also noted that the data quality plays a big part when analyses are executed on top the data warehouse and want to run tests against their datasets after the ETL steps have been executed to catch any discrepancies in the datasets.
 
-## Initiating the Airflow Web Server
-Ensure [Docker Desktop](https://www.docker.com/products/docker-desktop/) is installed before proceeding.
+The source data resides in S3 and needs to be processed in Sparkify's data warehouse in Amazon Redshift. The source datasets consist of JSON logs that tell about user activity in the application and JSON metadata about the songs the users listen to.
 
-To bring up the entire app stack up, we use [docker-compose](https://docs.docker.com/engine/reference/commandline/compose_up/) as shown below
+---
+## Problem Discription
 
-```bash
-docker-compose up -d
-```
-Visit http://localhost:8080 once all containers are up and running.
+In this project I fulfilled the complete ETL process by creating a data pipeline using Apache Airflow. Beginning with the Sparkify's raw datasets which are stored in S3 bucket, I formulated then custom operators for inserting automatically the raw data into redshift tables. These table follow a Star Schema.
+Finally I ran data quality chacks, which are basically simple SQL queries for each table.
 
-## Configuring Connections in the Airflow Web Server UI
-![Airflow Web Server UI. Credentials: `airflow`/`airflow`.](assets/login.png)
+The whole process can be conducted and observed via Apache Airflow
 
-On the Airflow web server UI, use `airflow` for both username and password.
-* Post-login, navigate to **Admin > Connections** to add required connections - specifically, `aws_credentials` and `redshift`.
-* Don't forget to start your Redshift cluster via the AWS console.
-* After completing these steps, run your DAG to ensure all tasks are successfully executed.
+The intent for tis for Data Scientists to use the solution to train machine learning models or for Data Analysts to answer dedicated question about the customers behaviour. 
 
-## Getting Started with the Project
-1. The project template package comprises three key components:
-   * The **DAG template** includes imports and task templates but lacks task dependencies.
-   * The **operators** folder with operator templates.
-   * A **helper class** for SQL transformations.
+---
+## Project Datasets
+The provided datasets for customers and music sessions are stored in JSON format in the `udacity-dend` S3 bucket and has following links.
+* Log-Data: `s3://udacity-dend/log_data`
+* JSON form: `s3://udacity-dend/log_json_path.json`
+* Song-Data: `s3://udacity-dend/log_data`
 
-1. With these template files, you should see the new DAG in the Airflow UI, with a graph view resembling the screenshot below:
-![Project DAG in the Airflow UI](assets/final_project_dag_graph1.png)
-You should be able to execute the DAG successfully, but if you check the logs, you will see only `operator not implemented` messages.
+---
+## Prerequisites
 
-## DAG Configuration
-In the DAG, add `default parameters` based on these guidelines:
-* No dependencies on past runs.
-* Tasks are retried three times on failure.
-* Retries occur every five minutes.
-* Catchup is turned off.
-* No email on retry.
+* Create an IAM User in AWS with the necessary rights.
+* Configure a Redshift Serverless workspace in AWS, which is open for external access.
+* By using the Query Editor from Redshift Serverless it is mandatory to run the sql queries from `create_tables.sql` to prior create the star schema tables.
 
-Additionally, configure task dependencies to match the flow depicted in the image below:
-![Working DAG with correct task dependencies](assets/final_project_dag_graph2.png)
+---
+## Structure
 
-## Developing Operators
-To complete the project, build four operators for staging data, transforming data, and performing data quality checks. While you can reuse code from Project 2, leverage Airflow's built-in functionalities like connections and hooks whenever possible to let Airflow handle the heavy lifting.
+<details>
+<summary>
+/dags
+</summary>
 
-### Stage Operator
-Load any JSON-formatted files from S3 to Amazon Redshift using the stage operator. The operator should create and run a SQL COPY statement based on provided parameters, distinguishing between JSON files. It should also support loading timestamped files from S3 based on execution time for backfills.
+This folder contains `final_project.py`, which describes the code for the complete DAG. It also descibes different tasks and orders them in after appropriate dependencies. 
 
-### Fact and Dimension Operators
-Utilize the provided SQL helper class for data transformations. These operators take a SQL statement, target database, and optional target table as input. For dimension loads, implement the truncate-insert pattern, allowing for switching between insert modes. Fact tables should support append-only functionality.
+**1- Customer Landing Table:**
 
-### Data Quality Operator
-Create the data quality operator to run checks on the data using SQL-based test cases and expected results. The operator should raise an exception and initiate task retry and eventual failure if test results don't match expectations.
+![alt text](AthenaQueries/Screenshots/customer_landing.png)
 
-## Reviewing Starter Code
-Before diving into development, familiarize yourself with the following files:
-- [plugins/operators/data_quality.py](plugins/operators/data_quality.py)
-- [plugins/operators/load_fact.py](plugins/operators/load_fact.py)
-- [plugins/operators/load_dimension.py](plugins/operators/load_dimension.py)
-- [plugins/operators/stage_redshift.py](plugins/operators/stage_redshift.py)
-- [plugins/helpers/sql_queries.py](plugins/helpers/sql_queries.py)
-- [dags/final_project.py](dags/final_project.py)
+**2- Accelerometer Landing Table:**
 
-Now you're ready to embark on this exciting journey into the world of Data Pipelines with Airflow!
+![alt text](AthenaQueries/Screenshots/accelerometer_landing.png)
+
+**3- Step Trainer Landing Table:**
+
+![alt text](AthenaQueries/Screenshots/step_trainer_landing.png)
+
+</details>
+
+<details>
+<summary>
+Trusted Zone
+</summary>
+
+In the Trusted Zone, I created AWS Glue jobs to transform the raw data from the landing zones to the corresponding trusted zones. In conclusion, it only contains customer records from people who agreed to share their data.
+
+**Glue job scripts**
+
+[1. customer_landing_to_trusted.py](GlueETL/Customer/customer_landing_to_trusted.py) - This script transfers customer data from the 'landing' to 'trusted' zones. It filters for customers who have agreed to share data with researchers.
+
+[2. accelerometer_landing_to_trusted.py](GlueETL/accelerometer/accelerometer_landing_to_trusted.py) - This script transfers accelerometer data from the 'landing' to 'trusted' zones. Using a join on customer_trusted and accelerometer_landing, It filters for Accelerometer readings from customers who have agreed to share data with researchers.
+
+[3. step_trainer_landing_to_trusted.py](GlueETL/StepTrainer/step_trainer_landing_to_trusted.py) - This script transfers Step Trainer data from the 'landing' to 'trusted' zones. Using a join on customer_curated and step_trainer_landing, It filters for customers who have accelerometer data and have agreed to share their data for research with Step Trainer readings.
+
+The customer_trusted table was queried in Athena.
+The following images show relevant Athena Queries to verify the correct table creation and the correct amount of data points.
+
+![alt text](AthenaQueries/Screenshots/customer_trusted.png)
+
+Verification, that customer_trusted only shows customers, who agreed using their data (therefore "sharewithresearchasofdate" column must be empty).
+![alt text](AthenaQueries/Screenshots/customer_trusted_verified.png)
+
+</details>
+
+<details>
+<summary>
+Curated Zone
+</summary>
+
+In the Curated Zone I created AWS Glue jobs to make further transformations, to meet the specific needs of a particular analysis. E.g. the tables were reduced to only show necessary data.
+
+**Glue job scripts**
+
+[customer_trusted_to_curated.py](GlueETL/Customer/customer_trusted_to_curated.py) - This script transfers customer data from the 'trusted' to 'curated' zones. Using a join on customer_trusted and accelerometer_landing, It filters for customers with Accelerometer readings and have agreed to share data with researchers.
+
+[create_machine_learning_curated.py](GlueETL/StepTrainer/create_machine_learning_curated.py): This script is used to build aggregated table that has each of the Step Trainer Readings, and the associated accelerometer reading data for the same timestamp, but only for customers who have agreed to share their data.
+
+The following images show relevant Athena Queries to verify the correct table creation and the correct amount of data points.
+
+![alt text](AthenaQueries/Screenshots/machine_learning_curated.png)
+
+</details>
